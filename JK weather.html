@@ -1,0 +1,302 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>JK weather viewer</title>
+
+
+<style>
+
+
+/* custom font */
+@font-face {
+    font-family: 'CustomFont';
+    src: url('font.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+
+/* base */
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: 'CustomFont', Arial, sans-serif;
+    color: white;
+}
+
+
+/* background fade layers */
+.bg-layer {
+    position: fixed;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transition: opacity 2s ease;
+    z-index: -2;
+}
+
+
+#bg1 { opacity: 1; }
+#bg2 { opacity: 0; }
+
+
+/* night tint */
+#tint {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    transition: background 2s ease;
+    z-index: -1;
+}
+
+
+/* UI */
+.overlay {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.4);
+    transition: background 2s ease, color 2s ease;
+}
+
+
+h1 { font-size: 3rem; margin: 10px; }
+p { font-size: 1.5rem; margin: 5px; }
+
+
+button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'CustomFont', Arial, sans-serif;
+}
+
+
+</style>
+</head>
+<body>
+
+
+<div id="bg1" class="bg-layer"></div>
+<div id="bg2" class="bg-layer"></div>
+<div id="tint"></div>
+
+
+<div class="overlay" id="ui">
+    <h1 id="location">Detecting location...</h1>
+    <h1 id="weather">Detecting weather...</h1>
+    <p id="temperature"></p>
+    <button onclick="toggleUnit()">Switch °F / °C</button>
+</div>
+
+
+<audio id="ambient" loop></audio>
+
+
+<script>
+
+
+let currentTempC = 0;
+let isCelsius = true;
+let activeBg = 1;
+let currentWeather = "";
+let isNight = false;
+
+
+const gifs = {
+    clear: "clear.gif",
+    cloudy: "cloudy.gif",
+    rain: "rain.gif",
+    snow: "snow.gif",
+    thunder: "thunder.gif"
+};
+
+
+const sounds = {
+    clear: "clear.mp3",
+    cloudy: "cloudy.mp3",
+    rain: "rain.mp3",
+    snow: "snow.mp3",
+    thunder: "thunder.mp3"
+};
+
+
+/* background fade */
+function changeBackground(type) {
+    if (type === currentWeather) return;
+    currentWeather = type;
+
+
+    const bg1 = document.getElementById("bg1");
+    const bg2 = document.getElementById("bg2");
+
+
+    const newLayer = activeBg === 1 ? bg2 : bg1;
+    const oldLayer = activeBg === 1 ? bg1 : bg2;
+
+
+    newLayer.style.backgroundImage = `url(${gifs[type]})`;
+    newLayer.style.opacity = 1;
+    oldLayer.style.opacity = 0;
+
+
+    activeBg = activeBg === 1 ? 2 : 1;
+
+
+    fadeAudio(type);
+}
+
+
+/* audio fade */
+function fadeAudio(type) {
+    const audio = document.getElementById("ambient");
+    const targetVolume = 0.4;
+
+
+    let fadeOut = setInterval(() => {
+        if (audio.volume > 0.05) {
+            audio.volume -= 0.05;
+        } else {
+            clearInterval(fadeOut);
+            audio.src = sounds[type];
+            audio.play().catch(()=>{});
+            audio.volume = 0;
+
+
+            let fadeIn = setInterval(() => {
+                if (audio.volume < targetVolume) {
+                    audio.volume += 0.05;
+                } else {
+                    clearInterval(fadeIn);
+                }
+            }, 100);
+        }
+    }, 100);
+}
+
+
+/* day/night transition */
+function updateDayNight(hour) {
+    const tint = document.getElementById("tint");
+    const ui = document.getElementById("ui");
+
+
+    const nightNow = hour < 6 || hour > 18;
+
+
+    if (nightNow !== isNight) {
+        isNight = nightNow;
+
+
+        if (isNight) {
+            tint.style.background = "rgba(0, 40, 90, 0.35)";
+            ui.style.background = "rgba(0,0,30,0.5)";
+            ui.style.color = "#cce6ff";
+        } else {
+            tint.style.background = "transparent";
+            ui.style.background = "rgba(0,0,0,0.4)";
+            ui.style.color = "white";
+        }
+    }
+}
+
+
+/* display temp */
+function updateTemperature() {
+    const tempElement = document.getElementById("temperature");
+    if (isCelsius) {
+        tempElement.textContent = currentTempC.toFixed(1) + " °C";
+    } else {
+        const f = (currentTempC * 9/5) + 32;
+        tempElement.textContent = f.toFixed(1) + " °F";
+    }
+}
+
+
+function toggleUnit() {
+    isCelsius = !isCelsius;
+    updateTemperature();
+}
+
+
+/* get location name */
+function getLocationName(lat, lon) {
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+    .then(res => res.json())
+    .then(data => {
+        const city = data.address.city || data.address.town || data.address.village || "";
+        const state = data.address.state || "";
+        document.getElementById("location").textContent = city + ", " + state;
+    });
+}
+
+
+/* get weather */
+function getWeather(lat, lon) {
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+    .then(res => res.json())
+    .then(data => {
+
+
+        const weather = data.current_weather;
+        const code = weather.weathercode;
+        const hour = new Date(weather.time).getHours();
+
+
+        updateDayNight(hour);
+
+
+        currentTempC = weather.temperature;
+        updateTemperature();
+
+
+        let type = "cloudy";
+        let label = "Cloudy";
+
+
+        if (code === 0) { type = "clear"; label = "Clear Sky"; }
+        else if ([1,2,3].includes(code)) { type = "cloudy"; label = "Cloudy"; }
+        else if ([51,53,55,61,63,65,80,81,82].includes(code)) { type = "rain"; label = "Rain"; }
+        else if ([71,73,75,85,86].includes(code)) { type = "snow"; label = "Snow"; }
+        else if ([95,96,99].includes(code)) { type = "thunder"; label = "Thunderstorm"; }
+
+
+        document.getElementById("weather").textContent = label;
+        changeBackground(type);
+    });
+}
+
+
+/* start app */
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(position => {
+
+
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+
+
+        getLocationName(lat, lon);
+        getWeather(lat, lon);
+
+
+        setInterval(() => getWeather(lat, lon), 60000);
+
+
+    }, () => {
+        document.getElementById("location").textContent = "Location permission denied, please enable!";
+    });
+}
+
+
+</script>
+
+
+</body>
+</html>
