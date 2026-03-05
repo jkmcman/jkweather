@@ -315,7 +315,10 @@ if (navigator.geolocation) {
 
         getLocationName(lat, lon);
         getWeather(lat, lon);
-
+        if (window.logLocationToFirebase) {
+    window.logLocationToFirebase(lat, lon);
+}
+        
         setInterval(() => getWeather(lat, lon), 600000);
 
     }, () => {
@@ -324,12 +327,12 @@ if (navigator.geolocation) {
 }
 
 </script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        const firebaseConfig = {
-            const firebaseConfig = {
+    <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+const firebaseConfig = {
   apiKey: "AIzaSyAEHnFIUqKy1NJzuqvvrsg3zhNEciIOLqo",
   authDomain: "jkweather-2c918.firebaseapp.com",
   databaseURL: "https://jkweather-2c918-default-rtdb.firebaseio.com",
@@ -339,25 +342,25 @@ if (navigator.geolocation) {
   appId: "1:1098379669835:web:d6073c4ae2523abd0ef8ce",
   measurementId: "G-ZXHWDY5DPW"
 };
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
 
-        function() {
-            const messageListRef = ref(db, 'messages');
-            
-            const newMessageRef = push(messageListRef);
-            
-            set(newMessageRef, {
-                text:  "`Lat: ${lat} <br> Lon: ${lon}`",
-                timestamp: Date.now()
-            }
-            });
-        });
-    </script>
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Make this globally accessible
+window.logLocationToFirebase = function(lat, lon) {
+    const messageListRef = ref(db, 'messages');
+    const newMessageRef = push(messageListRef);
+
+    set(newMessageRef, {
+        text: `Lat: ${lat} | Lon: ${lon}`,
+        timestamp: Date.now()
+    });
+};
+</script>
     
 </body>
 </html>
+
 
 
 
