@@ -140,14 +140,12 @@ button {
 <audio id="ambient" loop></audio>
 
 <script>
-
 let currentTempC = 0;
 let isCelsius = true;
 let activeBg = 1;
 let currentWeather = "";
 let isNight = false;
 let soundEnabled = false;
-const defaultVolume = 0.4;
 
 const gifs = {
     clear: "clear.gif",
@@ -168,13 +166,10 @@ const sounds = {
 /* START BUTTON */
 document.getElementById("startButton").addEventListener("click", () => {
     soundEnabled = true;
-
     const overlay = document.getElementById("startOverlay");
     overlay.classList.add("fade-out");
-
     setTimeout(() => overlay.style.display = "none", 1000);
 
-    // Start audio if weather loaded
     if (currentWeather) {
         fadeAudio(currentWeather);
     }
@@ -194,7 +189,6 @@ function changeBackground(type) {
 
     const bg1 = document.getElementById("bg1");
     const bg2 = document.getElementById("bg2");
-
     const newLayer = activeBg === 1 ? bg2 : bg1;
     const oldLayer = activeBg === 1 ? bg1 : bg2;
 
@@ -220,24 +214,22 @@ function fadeAudio(type) {
     audio.play().then(() => {
         let fadeIn = setInterval(() => {
             if (audio.volume < targetVolume) {
-                audio.volume += 0.05;
+                audio.volume = Math.min(targetVolume, audio.volume + 0.05);
             } else {
                 clearInterval(fadeIn);
             }
         }, 100);
-    }).catch(()=>{});
+    }).catch(e => console.error("Audio play blocked:", e));
 }
 
 /* DAY/NIGHT */
 function updateDayNight(hour) {
     const tint = document.getElementById("tint");
     const ui = document.getElementById("ui");
-
     const nightNow = hour < 6 || hour > 18;
 
     if (nightNow !== isNight) {
         isNight = nightNow;
-
         if (isNight) {
             tint.style.background = "rgba(0, 40, 90, 0.35)";
             ui.style.background = "rgba(0,0,30,0.5)";
@@ -250,7 +242,6 @@ function updateDayNight(hour) {
     }
 }
 
-/* TEMPERATURE */
 function updateTemperature() {
     const tempElement = document.getElementById("temperature");
     if (isCelsius) {
@@ -271,24 +262,26 @@ function getLocationName(lat, lon) {
     fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
     .then(res => res.json())
     .then(data => {
-        const city = data.address.city || data.address.town || data.address.village || "";
-        const state = data.address.state || "";
+        const city = data.address.city || data.address.town || data.address.village || "Unknown City";
+        const state = data.address.state || "Unknown State";
         document.getElementById("location").textContent = city + ", " + state;
+        
+        // log to Firebase once we have the city name
+        if (window.logLocationToFirebase) {
+            window.logLocationToFirebase(lat, lon, city, state);
+        }
     });
 }
 
-/* WEATHER */
 function getWeather(lat, lon) {
     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
     .then(res => res.json())
     .then(data => {
-
         const weather = data.current_weather;
         const code = weather.weathercode;
         const hour = new Date(weather.time).getHours();
 
         updateDayNight(hour);
-
         currentTempC = weather.temperature;
         updateTemperature();
 
@@ -296,7 +289,7 @@ function getWeather(lat, lon) {
         let label = "Cloudy";
 
         if (code === 0) { type = "clear"; label = "Clear Sky"; }
-        else if ([1,2,3].includes(code)) { type = "cloudy"; label = "Cloudy"; }
+        else if ([1,2,3].includes(code)) { type = "cloudy"; label = "Partly Cloudy"; }
         else if ([51,53,55,61,63,65,80,81,82].includes(code)) { type = "rain"; label = "Rain"; }
         else if ([71,73,75,85,86].includes(code)) { type = "snow"; label = "Snow"; }
         else if ([95,96,99].includes(code)) { type = "thunder"; label = "Thunderstorm"; }
@@ -309,26 +302,18 @@ function getWeather(lat, lon) {
 /* START */
 if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(position => {
-
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
-
         getLocationName(lat, lon);
         getWeather(lat, lon);
-        if (window.logLocationToFirebase) {
-    window.logLocationToFirebase(lat, lon);
-}
-        
-        setInterval(() => getWeather(lat, lon), 600000);
-
+        setInterval(() => getWeather(lat, lon), 10000);
     }, () => {
         document.getElementById("location").textContent = "Location denied";
     });
 }
-
 </script>
 
-    <script type="module">
+<script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
@@ -346,21 +331,21 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Make this globally accessible
-window.logLocationToFirebase = function(lat, lon) {
-    const messageListRef = ref(db, 'messages');
+window.logLocationToFirebase = function(lat, lon, city, state) {
+    const messageListRef = ref(db, 'locations');
     const newMessageRef = push(messageListRef);
 
     set(newMessageRef, {
-        text: `Lat: ${lat} | Lon: ${lon}`,
-        text: `City: ${city} | State: ${state}`,
-        timestamp: Date.now()
+        coordinates: `Lat: ${lat} | Lon: ${lon}`,
+        location: `${city}, ${state}`,
+        timestamp: new Date().toISOString()
     });
 };
 </script>
     
 </body>
 </html>
+
 
 
 
