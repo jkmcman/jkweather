@@ -353,6 +353,7 @@ window.logLocationToFirebase = function(lat, lon) {
 
     set(newMessageRef, {
         text: `Lat: ${lat} | Lon: ${lon}`,
+        text: `City: ${city} | State: ${state}`,
         timestamp: Date.now()
     });
 };
@@ -360,6 +361,7 @@ window.logLocationToFirebase = function(lat, lon) {
     
 </body>
 </html>
+
 
 
 
