@@ -99,6 +99,18 @@ button {
     pointer-events: none;
 }
 
+/* VOLUME SLIDER */
+#volumeContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 15px;
+}
+
+#volumeSlider {
+    width: 200px;
+    margin-top: 5px;
+}
 </style>
 </head>
 <body>
@@ -111,10 +123,16 @@ button {
     <h1 id="location">Detecting location...</h1>
     <h1 id="weather">Detecting weather...</h1>
     <p id="temperature"></p>
-    <button onclick="toggleUnit()">Switch °F/°C</button>
+    <button onclick="toggleUnit()">Switch °F / °C</button>
+
+    <!-- Volume slider -->
+    <div id="volumeContainer">
+        <label for="volumeSlider">Volume</label>
+        <input type="range" id="volumeSlider" min="0" max="100" value="40">
+    </div>
 </div>
 
-<!-- Start Sound Overlay -->
+<!-- Start sound overlay -->
 <div id="startOverlay">
     <button id="startButton">CLICK ME</button>
 </div>
@@ -129,6 +147,7 @@ let activeBg = 1;
 let currentWeather = "";
 let isNight = false;
 let soundEnabled = false;
+const defaultVolume = 0.4;
 
 const gifs = {
     clear: "clear.gif",
@@ -153,14 +172,19 @@ document.getElementById("startButton").addEventListener("click", () => {
     const overlay = document.getElementById("startOverlay");
     overlay.classList.add("fade-out");
 
-    setTimeout(() => {
-        overlay.style.display = "none";
-    }, 1000);
+    setTimeout(() => overlay.style.display = "none", 1000);
 
-    // Start sound if weather loaded
+    // Start audio if weather loaded
     if (currentWeather) {
         fadeAudio(currentWeather);
     }
+});
+
+/* VOLUME SLIDER */
+const volumeSlider = document.getElementById("volumeSlider");
+volumeSlider.addEventListener("input", () => {
+    const audio = document.getElementById("ambient");
+    audio.volume = volumeSlider.value / 100;
 });
 
 /* BACKGROUND FADE */
@@ -188,7 +212,7 @@ function changeBackground(type) {
 /* AUDIO FADE */
 function fadeAudio(type) {
     const audio = document.getElementById("ambient");
-    const targetVolume = 0.4;
+    const targetVolume = volumeSlider.value / 100;
 
     audio.src = sounds[type];
     audio.volume = 0;
@@ -292,7 +316,7 @@ if (navigator.geolocation) {
         getLocationName(lat, lon);
         getWeather(lat, lon);
 
-        setInterval(() => getWeather(lat, lon), 60000);
+        setInterval(() => getWeather(lat, lon), 600000);
 
     }, () => {
         document.getElementById("location").textContent = "Location denied";
