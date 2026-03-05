@@ -1,23 +1,18 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>JK weather viewer</title>
-
+<title>JK weather</title>
 
 <style>
 
-
-/* custom font */
+/* CUSTOM FONT */
 @font-face {
     font-family: 'CustomFont';
-    src: url('font.ttf') format('truetype');
-    font-weight: normal;
-    font-style: normal;
+    src: url('./font.ttf') format('truetype');
 }
 
-
-/* base */
+/* BASE */
 body {
     margin: 0;
     overflow: hidden;
@@ -25,31 +20,27 @@ body {
     color: white;
 }
 
-
-/* background fade layers */
+/* BACKGROUND LAYERS */
 .bg-layer {
     position: fixed;
     inset: 0;
     background-size: cover;
     background-position: center;
     transition: opacity 2s ease;
-    z-index: -2;
+    z-index: -3;
 }
-
 
 #bg1 { opacity: 1; }
 #bg2 { opacity: 0; }
 
-
-/* night tint */
+/* NIGHT TINT */
 #tint {
     position: fixed;
     inset: 0;
     background: transparent;
     transition: background 2s ease;
-    z-index: -1;
+    z-index: -2;
 }
-
 
 /* UI */
 .overlay {
@@ -60,54 +51,84 @@ body {
     align-items: center;
     background: rgba(0,0,0,0.4);
     transition: background 2s ease, color 2s ease;
+    z-index: 1;
 }
-
 
 h1 { font-size: 3rem; margin: 10px; }
 p { font-size: 1.5rem; margin: 5px; }
 
-
 button {
     margin-top: 15px;
-    padding: 10px 20px;
+    padding: 12px 25px;
     font-size: 1rem;
-    border-radius: 8px;
+    border-radius: 10px;
     border: none;
     cursor: pointer;
     font-family: 'CustomFont', Arial, sans-serif;
 }
 
+/* START BUTTON OVERLAY */
+#startOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+    transition: opacity 1s ease;
+}
+
+#startButton {
+    font-size: 3rem;
+    padding: 30px 60px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    background: white;
+    color: black;
+    transition: transform 0.3s ease;
+}
+
+#startButton:hover {
+    transform: scale(1.1);
+}
+
+.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
 
 </style>
 </head>
 <body>
 
-
 <div id="bg1" class="bg-layer"></div>
 <div id="bg2" class="bg-layer"></div>
 <div id="tint"></div>
-
 
 <div class="overlay" id="ui">
     <h1 id="location">Detecting location...</h1>
     <h1 id="weather">Detecting weather...</h1>
     <p id="temperature"></p>
-    <button onclick="toggleUnit()">Switch °F / °C</button>
+    <button onclick="toggleUnit()">Switch °F/°C</button>
 </div>
 
+<!-- Start Sound Overlay -->
+<div id="startOverlay">
+    <button id="startButton">CLICK ME</button>
+</div>
 
 <audio id="ambient" loop></audio>
 
-
 <script>
-
 
 let currentTempC = 0;
 let isCelsius = true;
 let activeBg = 1;
 let currentWeather = "";
 let isNight = false;
-
+let soundEnabled = false;
 
 const gifs = {
     clear: "clear.gif",
@@ -117,7 +138,6 @@ const gifs = {
     thunder: "thunder.gif"
 };
 
-
 const sounds = {
     clear: "clear.mp3",
     cloudy: "cloudy.mp3",
@@ -126,73 +146,73 @@ const sounds = {
     thunder: "thunder.mp3"
 };
 
+/* START BUTTON */
+document.getElementById("startButton").addEventListener("click", () => {
+    soundEnabled = true;
 
-/* background fade */
+    const overlay = document.getElementById("startOverlay");
+    overlay.classList.add("fade-out");
+
+    setTimeout(() => {
+        overlay.style.display = "none";
+    }, 1000);
+
+    // Start sound if weather loaded
+    if (currentWeather) {
+        fadeAudio(currentWeather);
+    }
+});
+
+/* BACKGROUND FADE */
 function changeBackground(type) {
     if (type === currentWeather) return;
     currentWeather = type;
 
-
     const bg1 = document.getElementById("bg1");
     const bg2 = document.getElementById("bg2");
 
-
     const newLayer = activeBg === 1 ? bg2 : bg1;
     const oldLayer = activeBg === 1 ? bg1 : bg2;
-
 
     newLayer.style.backgroundImage = `url(${gifs[type]})`;
     newLayer.style.opacity = 1;
     oldLayer.style.opacity = 0;
 
-
     activeBg = activeBg === 1 ? 2 : 1;
 
-
-    fadeAudio(type);
+    if (soundEnabled) {
+        fadeAudio(type);
+    }
 }
 
-
-/* audio fade */
+/* AUDIO FADE */
 function fadeAudio(type) {
     const audio = document.getElementById("ambient");
     const targetVolume = 0.4;
 
+    audio.src = sounds[type];
+    audio.volume = 0;
 
-    let fadeOut = setInterval(() => {
-        if (audio.volume > 0.05) {
-            audio.volume -= 0.05;
-        } else {
-            clearInterval(fadeOut);
-            audio.src = sounds[type];
-            audio.play().catch(()=>{});
-            audio.volume = 0;
-
-
-            let fadeIn = setInterval(() => {
-                if (audio.volume < targetVolume) {
-                    audio.volume += 0.05;
-                } else {
-                    clearInterval(fadeIn);
-                }
-            }, 100);
-        }
-    }, 100);
+    audio.play().then(() => {
+        let fadeIn = setInterval(() => {
+            if (audio.volume < targetVolume) {
+                audio.volume += 0.05;
+            } else {
+                clearInterval(fadeIn);
+            }
+        }, 100);
+    }).catch(()=>{});
 }
 
-
-/* day/night transition */
+/* DAY/NIGHT */
 function updateDayNight(hour) {
     const tint = document.getElementById("tint");
     const ui = document.getElementById("ui");
 
-
     const nightNow = hour < 6 || hour > 18;
-
 
     if (nightNow !== isNight) {
         isNight = nightNow;
-
 
         if (isNight) {
             tint.style.background = "rgba(0, 40, 90, 0.35)";
@@ -206,8 +226,7 @@ function updateDayNight(hour) {
     }
 }
 
-
-/* display temp */
+/* TEMPERATURE */
 function updateTemperature() {
     const tempElement = document.getElementById("temperature");
     if (isCelsius) {
@@ -218,14 +237,12 @@ function updateTemperature() {
     }
 }
 
-
 function toggleUnit() {
     isCelsius = !isCelsius;
     updateTemperature();
 }
 
-
-/* get location name */
+/* LOCATION */
 function getLocationName(lat, lon) {
     fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
     .then(res => res.json())
@@ -236,29 +253,23 @@ function getLocationName(lat, lon) {
     });
 }
 
-
-/* get weather */
+/* WEATHER */
 function getWeather(lat, lon) {
     fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
     .then(res => res.json())
     .then(data => {
 
-
         const weather = data.current_weather;
         const code = weather.weathercode;
         const hour = new Date(weather.time).getHours();
 
-
         updateDayNight(hour);
-
 
         currentTempC = weather.temperature;
         updateTemperature();
 
-
         let type = "cloudy";
         let label = "Cloudy";
-
 
         if (code === 0) { type = "clear"; label = "Clear Sky"; }
         else if ([1,2,3].includes(code)) { type = "cloudy"; label = "Cloudy"; }
@@ -266,37 +277,29 @@ function getWeather(lat, lon) {
         else if ([71,73,75,85,86].includes(code)) { type = "snow"; label = "Snow"; }
         else if ([95,96,99].includes(code)) { type = "thunder"; label = "Thunderstorm"; }
 
-
         document.getElementById("weather").textContent = label;
         changeBackground(type);
     });
 }
 
-
-/* start app */
+/* START */
 if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(position => {
-
 
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
 
-
         getLocationName(lat, lon);
         getWeather(lat, lon);
 
-
         setInterval(() => getWeather(lat, lon), 60000);
 
-
     }, () => {
-        document.getElementById("location").textContent = "Location permission denied, please enable!";
+        document.getElementById("location").textContent = "Location denied";
     });
 }
 
-
 </script>
-
 
 </body>
 </html>
