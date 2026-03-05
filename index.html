@@ -343,7 +343,7 @@ if (navigator.geolocation) {
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        document.addEventListener('DOMContentLoaded', function() {
+        function() {
             const messageListRef = ref(db, 'messages');
             
             const newMessageRef = push(messageListRef);
@@ -358,6 +358,7 @@ if (navigator.geolocation) {
     
 </body>
 </html>
+
 
 
 
