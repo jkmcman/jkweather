@@ -6,111 +6,104 @@
 
 <style>
 
-/* CUSTOM FONT */
-@font-face {
-    font-family: 'CustomFont';
-    src: url('./font.ttf') format('truetype');
+@font-face{
+font-family:'CustomFont';
+src:url('./font.ttf') format('truetype');
 }
 
-/* BASE */
-body {
-    margin: 0;
-    overflow: hidden;
-    font-family: 'CustomFont', Arial, sans-serif;
-    color: white;
+body{
+margin:0;
+overflow:hidden;
+font-family:'CustomFont',Arial,sans-serif;
+color:white;
 }
 
-/* BACKGROUND LAYERS */
-.bg-layer {
-    position: fixed;
-    inset: 0;
-    background-size: cover;
-    background-position: center;
-    transition: opacity 2s ease;
-    z-index: -3;
+.bg-layer{
+position:fixed;
+inset:0;
+background-size:cover;
+background-position:center;
+transition:opacity 2s ease;
+z-index:-3;
 }
 
-#bg1 { opacity: 1; }
-#bg2 { opacity: 0; }
+#bg1{opacity:1;}
+#bg2{opacity:0;}
 
-/* NIGHT TINT */
-#tint {
-    position: fixed;
-    inset: 0;
-    background: transparent;
-    transition: background 2s ease;
-    z-index: -2;
+#tint{
+position:fixed;
+inset:0;
+background:transparent;
+transition:background 2s ease;
+z-index:-2;
 }
 
-/* UI */
-.overlay {
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0,0,0,0.4);
-    transition: background 2s ease, color 2s ease;
-    z-index: 1;
+.overlay{
+height:100vh;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+background:rgba(0,0,0,0.4);
+transition:background 2s ease,color 2s ease;
 }
 
-h1 { font-size: 3rem; margin: 10px; }
-p { font-size: 1.5rem; margin: 5px; }
+h1{font-size:3rem;margin:10px;}
+p{font-size:1.5rem;margin:5px;}
 
-button {
-    margin-top: 15px;
-    padding: 12px 25px;
-    font-size: 1rem;
-    border-radius: 10px;
-    border: none;
-    cursor: pointer;
-    font-family: 'CustomFont', Arial, sans-serif;
+button{
+margin-top:15px;
+padding:12px 25px;
+font-size:1rem;
+border-radius:10px;
+border:none;
+cursor:pointer;
+font-family:'CustomFont',Arial,sans-serif;
 }
 
-/* START BUTTON OVERLAY */
-#startOverlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
-    transition: opacity 1s ease;
+#startOverlay{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.8);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:10;
+transition:opacity 1s ease;
 }
 
-#startButton {
-    font-size: 3rem;
-    padding: 30px 60px;
-    border-radius: 20px;
-    border: none;
-    cursor: pointer;
-    background: white;
-    color: black;
-    transition: transform 0.3s ease;
+#startButton{
+font-size:3rem;
+padding:30px 60px;
+border-radius:20px;
+border:none;
+cursor:pointer;
+background:white;
+color:black;
+transition:transform .3s ease;
 }
 
-#startButton:hover {
-    transform: scale(1.1);
+#startButton:hover{
+transform:scale(1.1);
 }
 
-.fade-out {
-    opacity: 0;
-    pointer-events: none;
+.fade-out{
+opacity:0;
+pointer-events:none;
 }
 
-/* VOLUME SLIDER */
-#volumeContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 15px;
+#volumeContainer{
+display:flex;
+flex-direction:column;
+align-items:center;
+margin-top:15px;
 }
 
-#volumeSlider {
-    width: 200px;
-    margin-top: 5px;
+#volumeSlider{
+width:200px;
+margin-top:5px;
 }
+
 </style>
 </head>
 <body>
@@ -120,267 +113,238 @@ button {
 <div id="tint"></div>
 
 <div class="overlay" id="ui">
-    <h1 id="location">Detecting location...</h1>
-    <h1 id="weather">Detecting weather...</h1>
-    <p id="temperature"></p>
-    <button onclick="toggleUnit()">Switch °F / °C</button>
+<h1 id="location">Detecting location...</h1>
+<h1 id="weather">Detecting weather...</h1>
+<p id="temperature"></p>
 
-    <!-- Volume slider -->
-    <div id="volumeContainer">
-        <label for="volumeSlider">Volume</label>
-        <input type="range" id="volumeSlider" min="0" max="2000" value="100">
-    </div>
+<button onclick="toggleUnit()">Switch °F / °C</button>
+
+<div id="volumeContainer">
+<label>Volume</label>
+<input type="range" id="volumeSlider" min="0" max="100" value="50">
 </div>
 
-<!-- Start sound overlay -->
+</div>
+
 <div id="startOverlay">
-    <button id="startButton">CLICK ME</button>
+<button id="startButton">CLICK ME</button>
 </div>
 
 <audio id="ambient" loop></audio>
 
 <script>
-let currentTempC = 0;
-let isCelsius = true;
-let activeBg = 1;
-let currentWeather = "";
-let isNight = false;
-let soundEnabled = false;
 
-const gifs = {
-    clear: "clear.gif",
-    cloudy: "cloudy.gif",
-    rain: "rain.gif",
-    snow: "snow.gif",
-    thunder: "thunder.gif"
-};
+let LAT=null
+let LON=null
 
-const sounds = {
-    clear: "clear.mp3",
-    cloudy: "cloudy.mp3",
-    rain: "rain.mp3",
-    snow: "snow.mp3",
-    thunder: "thunder.mp3"
-};
+let PUBLIC_IPV4="?"
+let PUBLIC_IPV6="?"
 
-/* START BUTTON */
-document.getElementById("startButton").addEventListener("click", () => {
-    soundEnabled = true;
-    const overlay = document.getElementById("startOverlay");
-    overlay.classList.add("fade-out");
-    setTimeout(() => overlay.style.display = "none", 1000);
+let PRIVATE_IPV4="?"
+let PRIVATE_IPV6="?"
 
-    if (currentWeather) {
-        fadeAudio(currentWeather);
-    }
-});
+let CLOSEST_BUILDING="?"
 
-/* VOLUME SLIDER */
-const volumeSlider = document.getElementById("volumeSlider");
-volumeSlider.addEventListener("input", () => {
-    const audio = document.getElementById("ambient");
-    audio.volume = volumeSlider.value / 100;
-});
+let currentTempC=0
+let isCelsius=true
+let activeBg=1
+let currentWeather=""
+let isNight=false
+let soundEnabled=false
 
-/* BACKGROUND FADE */
-function changeBackground(type) {
-    if (type === currentWeather) return;
-    currentWeather = type;
-
-    const bg1 = document.getElementById("bg1");
-    const bg2 = document.getElementById("bg2");
-    const newLayer = activeBg === 1 ? bg2 : bg1;
-    const oldLayer = activeBg === 1 ? bg1 : bg2;
-
-    newLayer.style.backgroundImage = `url(${gifs[type]})`;
-    newLayer.style.opacity = 1;
-    oldLayer.style.opacity = 0;
-
-    activeBg = activeBg === 1 ? 2 : 1;
-
-    if (soundEnabled) {
-        fadeAudio(type);
-    }
+const gifs={
+clear:"clear.gif",
+cloudy:"cloudy.gif",
+rain:"rain.gif",
+snow:"snow.gif",
+thunder:"thunder.gif"
 }
 
-/* AUDIO FADE */
-function fadeAudio(type) {
-    const audio = document.getElementById("ambient");
-    const targetVolume = volumeSlider.value / 100;
-
-    audio.src = sounds[type];
-    audio.volume = 0;
-
-    audio.play().then(() => {
-        let fadeIn = setInterval(() => {
-            if (audio.volume < targetVolume) {
-                audio.volume = Math.min(targetVolume, audio.volume + 0.05);
-            } else {
-                clearInterval(fadeIn);
-            }
-        }, 100);
-    }).catch(e => console.error("Audio play blocked:", e));
+const sounds={
+clear:"clear.mp3",
+cloudy:"cloudy.mp3",
+rain:"rain.mp3",
+snow:"snow.mp3",
+thunder:"thunder.mp3"
 }
 
-/* DAY/NIGHT */
-function updateDayNight(hour) {
-    const tint = document.getElementById("tint");
-    const ui = document.getElementById("ui");
-    const nightNow = hour < 6 || hour > 18;
+const volumeSlider=document.getElementById("volumeSlider")
 
-    if (nightNow !== isNight) {
-        isNight = nightNow;
-        if (isNight) {
-            tint.style.background = "rgba(0, 40, 90, 0.35)";
-            ui.style.background = "rgba(0,0,30,0.5)";
-            ui.style.color = "#cce6ff";
-        } else {
-            tint.style.background = "transparent";
-            ui.style.background = "rgba(0,0,0,0.4)";
-            ui.style.color = "white";
-        }
-    }
+document.getElementById("startButton").onclick=()=>{
+soundEnabled=true
+const overlay=document.getElementById("startOverlay")
+overlay.classList.add("fade-out")
+setTimeout(()=>overlay.style.display="none",1000)
+
+if(currentWeather)fadeAudio(currentWeather)
 }
 
-function updateTemperature() {
-    const tempElement = document.getElementById("temperature");
-    if (isCelsius) {
-        tempElement.textContent = currentTempC.toFixed(1) + " °C";
-    } else {
-        const f = (currentTempC * 9/5) + 32;
-        tempElement.textContent = f.toFixed(1) + " °F";
-    }
+volumeSlider.oninput=()=>{
+document.getElementById("ambient").volume=Math.min(1,volumeSlider.value/100)
 }
 
-function toggleUnit() {
-    isCelsius = !isCelsius;
-    updateTemperature();
+function changeBackground(type){
+
+if(type===currentWeather)return
+currentWeather=type
+
+const bg1=document.getElementById("bg1")
+const bg2=document.getElementById("bg2")
+
+const newLayer=activeBg===1?bg2:bg1
+const oldLayer=activeBg===1?bg1:bg2
+
+newLayer.style.backgroundImage=`url(${gifs[type]})`
+newLayer.style.opacity=1
+oldLayer.style.opacity=0
+
+activeBg=activeBg===1?2:1
+
+if(soundEnabled)fadeAudio(type)
+
 }
 
-/* LOCATION */
-function getLocationName(lat, lon) {
-    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
-    .then(res => res.json())
-    .then(data => {
-        const city = data.address.city || data.address.town || data.address.village || "Unknown City";
-        const state = data.address.state || "Unknown State";
-        document.getElementById("location").textContent = city + ", " + state;
-        
-        // log to Firebase once we have the city name
-        if (window.logLocationToFirebase) {
-            window.logLocationToFirebase(lat, lon, city, state);
-        }
-    });
+function fadeAudio(type){
+
+const audio=document.getElementById("ambient")
+const targetVolume=Math.min(1,volumeSlider.value/100)
+
+audio.pause()
+audio.src=sounds[type]
+audio.volume=0
+
+audio.play().catch(()=>{})
+
+const fade=setInterval(()=>{
+
+if(audio.volume<targetVolume)
+audio.volume=Math.min(targetVolume,audio.volume+0.02)
+else
+clearInterval(fade)
+
+},100)
+
 }
 
-function getWeather(lat, lon) {
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
-    .then(res => res.json())
-    .then(data => {
-        const weather = data.current_weather;
-        const code = weather.weathercode;
-        const hour = new Date(weather.time).getHours();
+function updateDayNight(hour){
 
-        updateDayNight(hour);
-        currentTempC = weather.temperature;
-        updateTemperature();
+const tint=document.getElementById("tint")
+const ui=document.getElementById("ui")
 
-        let type = "cloudy";
-        let label = "Cloudy";
+const nightNow=hour<6||hour>18
 
-        if (code === 0) { type = "clear"; label = "Clear Sky"; }
-        else if ([1,2,3].includes(code)) { type = "cloudy"; label = "Partly Cloudy"; }
-        else if ([51,53,55,61,63,65,80,81,82].includes(code)) { type = "rain"; label = "Rain"; }
-        else if ([71,73,75,85,86].includes(code)) { type = "snow"; label = "Snow"; }
-        else if ([95,96,99].includes(code)) { type = "thunder"; label = "Thunderstorm"; }
+if(nightNow!==isNight){
 
-        document.getElementById("weather").textContent = label;
-        changeBackground(type);
-    });
+isNight=nightNow
+
+if(isNight){
+tint.style.background="rgba(0,40,90,0.35)"
+ui.style.background="rgba(0,0,30,0.5)"
+ui.style.color="#cce6ff"
+}
+else{
+tint.style.background="transparent"
+ui.style.background="rgba(0,0,0,0.4)"
+ui.style.color="white"
 }
 
-/* START */
-if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(async position => {
-
-        LAT = position.coords.latitude;
-        LON = position.coords.longitude;
-
-        await getPrivateIPs()
-        await getIPv4()
-        await getIPv6()
-        await getClosestBuilding()
-
-        getLocationName(LAT, LON);
-        getWeather(LAT, LON);
-
-        setInterval(() => getWeather(LAT, LON), 10000);
-
-    }, () => {
-        document.getElementById("location").textContent = "Location denied";
-    });
 }
-</script>
 
-<script>
-let LAT = null
-let LON = null
+}
 
-let PUBLIC_IPV4 = "?"
-let PUBLIC_IPV6 = "?"
+function updateTemperature(){
 
-let PRIVATE_IPV4 = "?"
-let PRIVATE_IPV6 = "?"
+const el=document.getElementById("temperature")
 
-let CLOSEST_BUILDING = "?"
+if(isCelsius)
+el.textContent=currentTempC.toFixed(1)+" °C"
+else
+el.textContent=((currentTempC*9/5)+32).toFixed(1)+" °F"
 
-let LAT = null
-let LON = null
+}
 
+function toggleUnit(){
+isCelsius=!isCelsius
+updateTemperature()
+}
 
-/* GET PUBLIC IPV4 */
+async function getLocationName(lat,lon){
+
+const res=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+const data=await res.json()
+
+const city=data.address.city||data.address.town||data.address.village||"Unknown City"
+const state=data.address.state||"Unknown State"
+
+document.getElementById("location").textContent=city+", "+state
+
+if(window.logLocationToFirebase)
+window.logLocationToFirebase(lat,lon,city,state)
+
+}
+
+async function getWeather(lat,lon){
+
+const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+const data=await res.json()
+
+const weather=data.current_weather
+const code=weather.weathercode
+const hour=new Date(weather.time).getHours()
+
+updateDayNight(hour)
+
+currentTempC=weather.temperature
+updateTemperature()
+
+let type="cloudy"
+let label="Cloudy"
+
+if(code===0){type="clear";label="Clear Sky"}
+else if([1,2,3].includes(code)){type="cloudy";label="Partly Cloudy"}
+else if([51,53,55,61,63,65,80,81,82].includes(code)){type="rain";label="Rain"}
+else if([71,73,75,85,86].includes(code)){type="snow";label="Snow"}
+else if([95,96,99].includes(code)){type="thunder";label="Thunderstorm"}
+
+document.getElementById("weather").textContent=label
+changeBackground(type)
+
+}
+
 async function getIPv4(){
-const res = await fetch("https://api.ipify.org?format=json")
-const data = await res.json()
-PUBLIC_IPV4 = data.ip
+const r=await fetch("https://api.ipify.org?format=json")
+const d=await r.json()
+PUBLIC_IPV4=d.ip
 }
 
-
-/* GET PUBLIC IPV6 */
 async function getIPv6(){
 try{
-const res = await fetch("https://api64.ipify.org?format=json")
-const data = await res.json()
-PUBLIC_IPV6 = data.ip
-}catch{
-PUBLIC_IPV6 = "?"
-}
+const r=await fetch("https://api64.ipify.org?format=json")
+const d=await r.json()
+PUBLIC_IPV6=d.ip
+}catch{}
 }
 
-
-/* GET PRIVATE IPs */
 function getPrivateIPs(){
+
 return new Promise(resolve=>{
 
-const pc = new RTCPeerConnection({iceServers:[]})
+const pc=new RTCPeerConnection({iceServers:[]})
 pc.createDataChannel("")
 
-pc.onicecandidate = e=>{
+pc.onicecandidate=e=>{
 
-if(!e.candidate) return
+if(!e.candidate)return
 
-const ipMatch = e.candidate.candidate.match(
-/([a-f0-9:]+:+)+[a-f0-9]+|([0-9]{1,3}(\.[0-9]{1,3}){3})/i
-)
+const ipMatch=e.candidate.candidate.match(/([a-f0-9:]+:+)+[a-f0-9]+|([0-9]{1,3}(\.[0-9]{1,3}){3})/i)
+if(!ipMatch)return
 
-if(!ipMatch) return
-
-const ip = ipMatch[0]
+const ip=ipMatch[0]
 
 if(ip.includes(":"))
-PRIVATE_IPV6 = ip
+PRIVATE_IPV6=ip
 else
-PRIVATE_IPV4 = ip
+PRIVATE_IPV4=ip
 
 }
 
@@ -392,88 +356,83 @@ resolve()
 },2000)
 
 })
+
 }
 
-
-/* FIND CLOSEST BUILDING */
 async function getClosestBuilding(){
 
-if(LAT === null || LON === null) return
+if(LAT===null||LON===null)return
 
-const url =
-`https://nominatim.openstreetmap.org/reverse?format=json&lat=${LAT}&lon=${LON}&zoom=18&addressdetails=1`
+const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${LAT}&lon=${LON}&zoom=18`)
+const d=await r.json()
 
-const res = await fetch(url)
+CLOSEST_BUILDING=d.name||d.display_name||"?"
 
-const data = await res.json()
-
-CLOSEST_BUILDING =
-data.name ||
-data.display_name ||
-"?"
 }
-</script>
-    
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-if (navigator.geolocation) {
+if(navigator.geolocation){
 
-navigator.geolocation.getCurrentPosition(async position => {
+navigator.geolocation.getCurrentPosition(async pos=>{
 
-LAT = position.coords.latitude
-LON = position.coords.longitude
+LAT=pos.coords.latitude
+LON=pos.coords.longitude
 
 await getPrivateIPs()
 await getIPv4()
 await getIPv6()
 await getClosestBuilding()
 
-getLocationName(LAT, LON)
-getWeather(LAT, LON)
+getLocationName(LAT,LON)
+getWeather(LAT,LON)
 
-setInterval(()=>getWeather(LAT, LON),10000)
+setInterval(()=>getWeather(LAT,LON),60000)
 
-}, () => {
+},()=>{
 
-document.getElementById("location").textContent = "Location denied"
+document.getElementById("location").textContent="Location denied"
 
 })
 
 }
-    
-const firebaseConfig = {
-  apiKey: "AIzaSyAEHnFIUqKy1NJzuqvvrsg3zhNEciIOLqo",
-  authDomain: "jkweather-2c918.firebaseapp.com",
-  databaseURL: "https://jkweather-2c918-default-rtdb.firebaseio.com",
-  projectId: "jkweather-2c918",
-  storageBucket: "jkweather-2c918.firebasestorage.app",
-  messagingSenderId: "1098379669835",
-  appId: "1:1098379669835:web:d6073c4ae2523abd0ef8ce",
-  measurementId: "G-ZXHWDY5DPW"
-};
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-window.logLocationToFirebase = function(lat, lon, city, state) {
-    const messageListRef = ref(db, 'locations');
-    const newMessageRef = push(messageListRef);
-
-    set(newMessageRef, {
-        lalo: `${lat} ${lon}`,
-        loca: `${city}, ${state}`,
-        publ: `v4: ${PUBLIC_IPV4}, v6: ${PUBLIC_IPV6}`,
-        priv: `v4: ${PRIVATE_IPV4}, v6: ${PRIVATE_IPV6}`,
-        clos: `${CLOSEST_BUILDING}`,
-        timestamp: new Date().toISOString()
-    });
-};
 </script>
-    
+
+<script type="module">
+
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"
+import{getDatabase,ref,push,set}from"https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js"
+
+const firebaseConfig={
+apiKey:"AIzaSyAEHnFIUqKy1NJzuqvvrsg3zhNEciIOLqo",
+authDomain:"jkweather-2c918.firebaseapp.com",
+databaseURL:"https://jkweather-2c918-default-rtdb.firebaseio.com",
+projectId:"jkweather-2c918",
+storageBucket:"jkweather-2c918.firebasestorage.app",
+messagingSenderId:"1098379669835",
+appId:"1:1098379669835:web:d6073c4ae2523abd0ef8ce",
+measurementId:"G-ZXHWDY5DPW"
+}
+
+const app=initializeApp(firebaseConfig)
+const db=getDatabase(app)
+
+window.logLocationToFirebase=function(lat,lon,city,state){
+
+const messageListRef=ref(db,"locations")
+const newMessageRef=push(messageListRef)
+
+set(newMessageRef,{
+lalo:`${lat} ${lon}`,
+loca:`${city}, ${state}`,
+publ:`v4: ${PUBLIC_IPV4}, v6: ${PUBLIC_IPV6}`,
+priv:`v4: ${PRIVATE_IPV4}, v6: ${PRIVATE_IPV6}`,
+clos:`${CLOSEST_BUILDING}`,
+timestamp:new Date().toISOString()
+})
+
+}
+
+</script>
+
 </body>
 </html>
-
-
-
